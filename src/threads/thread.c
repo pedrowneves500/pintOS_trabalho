@@ -11,9 +11,14 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
+
+//ADICIONADO NO PROJETO 1
+int64_t wakeup_tick_global = INT64_MAX;
+//ATÉ AQUI
 
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
@@ -93,7 +98,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-
+  
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -315,6 +320,28 @@ thread_yield (void)
   intr_set_level (old_level);
 }
 
+//Adicionado projeto 1 !!!!
+void thread_sleep(int64_t ticks) {
+  struct thread* cur = thread_current();
+  enum intr_level old_level;
+  ASSERT (!intr_context ());
+  old_level = intr_disable();
+
+  if(cur != idle_thread) {
+   
+
+    /*cur->wakeup_tick = ticks; BUGADO??? AJEITAR!
+    if (cur->wakeup_tick < wakeup_tick_global) {
+      //wakeup_tick_global = cur->wakeup_tick;
+    }*/
+   
+    cur->status = THREAD_BLOCKED;
+    schedule();
+    intr_set_level(old_level);
+  }
+  
+}
+//ATÉ AQUI!
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
 void
@@ -588,3 +615,4 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
