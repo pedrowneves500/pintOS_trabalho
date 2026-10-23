@@ -16,9 +16,10 @@
 #include "userprog/process.h"
 #endif
 
-//ADICIONADO NO PROJETO 1
-int64_t wakeup_tick_global = INT64_MAX;
-//ATÉ AQUI
+//ADICIONADO NO PROJETO 1 (CORRIGIDO)
+static struct list sleep_list;
+static int64_t wakeup_tick_global = INT64_MAX;
+//ATÉ AQUI (CORRIGIDO)
 
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
@@ -98,6 +99,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  list_init (&sleep_list);
   
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -320,28 +322,56 @@ thread_yield (void)
   intr_set_level (old_level);
 }
 
-//Adicionado projeto 1 !!!!
+//Adicionado projeto 1 !!!! (CORRIGIDO)
 void thread_sleep(int64_t ticks) {
+
   struct thread* cur = thread_current();
   enum intr_level old_level;
   ASSERT (!intr_context ());
   old_level = intr_disable();
 
   if(cur != idle_thread) {
-   
-
-    /*cur->wakeup_tick = ticks; BUGADO??? AJEITAR!
-    if (cur->wakeup_tick < wakeup_tick_global) {
-      //wakeup_tick_global = cur->wakeup_tick;
-    }*/
-   
-    cur->status = THREAD_BLOCKED;
-    schedule();
-    intr_set_level(old_level);
-  }
   
+    cur->wakeup_tick = ticks;
+    list_push_back (&sleep_list, &cur->elem);
+    if (cur->wakeup_tick < wakeup_tick_global) {
+      wakeup_tick_global = cur->wakeup_tick;
+    }
+   
+    thread_block ();
+  }
+
+  intr_set_level(old_level);
 }
-//ATÉ AQUI!
+//ATÉ AQUI! (CORRIGIDO)
+
+// ADICIONANDO THREAD_WAKEUP
+void
+thread_wakeup (int64_t current_tick)
+{
+  if (current_tick < wakeup_tick_global)
+    return;
+
+  wakeup_tick_global = INT64_MAX;
+  struct list_elem *e = list_begin (&sleep_list);
+
+  while (e != list_end (&sleep_list))
+    {
+      struct thread *t = list_entry (e, struct thread, elem);
+
+      if (current_tick >= t->wakeup_tick)
+        {
+          e = list_remove (e);
+          thread_unblock (t);
+        }
+      else
+        {
+          if (t->wakeup_tick < wakeup_tick_global)
+            wakeup_tick_global = t->wakeup_tick;
+          e = list_next (e);
+        }
+    }
+}
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
 void

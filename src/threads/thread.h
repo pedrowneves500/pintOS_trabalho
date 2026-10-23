@@ -126,10 +126,10 @@ const char *thread_name (void);
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);
 
-//ADICIONADO NO PROJETO 1
-void thread_sleep(int64_t);
-extern int64_t global_wakeup_tick;
-// ATÉ AQUI
+//ADICIONADO NO PROJETO 1 (CORRIGIDO)
+void thread_sleep (int64_t ticks);
+void thread_wakeup (int64_t current_tick);
+// ATÉ AQUI (CORRIGIDO)
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);

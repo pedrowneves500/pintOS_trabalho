@@ -21,7 +21,8 @@
 static int64_t ticks;
 
 /* Lista de threads em estado de suspensao/espera. */
-static struct list sleep_list;
+//static struct list sleep_list;
+//ESSA LINHA PODE SER EXCLUIDA, JÁ QUE AGORA TUDO ACONTECE NO THREAD.C, NÃO PRECISAMOS DO SLEEP_LIST AQUI
 
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
@@ -38,7 +39,7 @@ static void real_time_delay (int64_t num, int32_t denom);
 void
 timer_init (void) 
 {
-  list_init (&sleep_list);
+  //list_init (&sleep_list);      (ISSO PASSOU A SER FEITO NO THREAD.C)
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
 }
@@ -90,14 +91,18 @@ timer_elapsed (int64_t then)
 
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
+// TIMER_SLEEP CORRIGIDA
 void
 timer_sleep (int64_t ticks) 
 {
   int64_t start = timer_ticks ();
 
   ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+
+  if (ticks <= 0)
+    return;
+
+  thread_sleep (start + ticks);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -171,11 +176,13 @@ timer_print_stats (void)
 }
 
 /* Timer interrupt handler. */
+//AGORA ESTÁ CHAMANDO THREAD_WAKEUP
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  thread_wakeup (ticks);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
