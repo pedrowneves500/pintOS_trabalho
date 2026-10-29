@@ -89,6 +89,8 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     int64_t wakeup_tick;                /* Tick em que a thread deve acordar. */
+    int nice;                           /* Nice da thread (-20 a 20). */
+    int recent_cpu;                     /* Uso recente de CPU (ponto fixo 17.14). */
     struct list_elem allelem;           /* List element for all threads list. */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
