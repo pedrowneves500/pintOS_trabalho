@@ -145,4 +145,9 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
+/* MLFQS: usados por synch.c para acordar e preemptar por prioridade. */
+bool thread_cmp_priority (const struct list_elem *, const struct list_elem *,
+                          void *aux);
+void thread_yield_if_lower_priority (void);
+
 #endif /* threads/thread.h */

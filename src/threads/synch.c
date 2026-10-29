@@ -113,11 +113,19 @@ sema_up (struct semaphore *sema)
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();
-  if (!list_empty (&sema->waiters)) 
-    thread_unblock (list_entry (list_pop_front (&sema->waiters),
-                                struct thread, elem));
+  if (!list_empty (&sema->waiters))
+    {
+      /* Acorda o waiter de maior prioridade. */
+      struct list_elem *e = list_max (&sema->waiters,
+                                      thread_cmp_priority, NULL);
+      list_remove (e);
+      thread_unblock (list_entry (e, struct thread, elem));
+    }
   sema->value++;
   intr_set_level (old_level);
+
+  /* MLFQS: se a thread acordada tem prioridade maior, cede a CPU. */
+  thread_yield_if_lower_priority ();
 }
 
 static void sema_test_helper (void *sema_);

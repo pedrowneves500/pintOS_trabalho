@@ -92,8 +92,6 @@ static tid_t allocate_tid (void);
 static void mlfqs_update_priority (struct thread *, void *aux);
 static void mlfqs_update_recent_cpu (struct thread *, void *aux);
 static void mlfqs_update_load_avg (void);
-static bool cmp_priority (const struct list_elem *, const struct list_elem *,
-                          void *aux);
 static bool ready_has_higher_priority (int priority);
 
 /* Initializes the threading system by transforming the code
@@ -536,9 +534,9 @@ mlfqs_update_load_avg (void)
 }
 
 /* Compara duas threads pela prioridade, para uso com list_max. */
-static bool
-cmp_priority (const struct list_elem *a, const struct list_elem *b,
-              void *aux UNUSED)
+bool
+thread_cmp_priority (const struct list_elem *a, const struct list_elem *b,
+                     void *aux UNUSED)
 {
   return list_entry (a, struct thread, elem)->priority
          < list_entry (b, struct thread, elem)->priority;
@@ -554,9 +552,33 @@ ready_has_higher_priority (int priority)
   if (list_empty (&ready_list))
     return false;
 
-  max = list_entry (list_max (&ready_list, cmp_priority, NULL),
+  max = list_entry (list_max (&ready_list, thread_cmp_priority, NULL),
                     struct thread, elem);
   return max->priority > priority;
+}
+
+/* MLFQS: cede a CPU se alguma thread pronta tiver prioridade maior
+   que a atual.  Dentro de um handler de interrupcao, a troca e feita
+   no retorno da interrupcao. */
+void
+thread_yield_if_lower_priority (void)
+{
+  enum intr_level old_level;
+  bool must_yield;
+
+  if (!thread_mlfqs)
+    return;
+
+  old_level = intr_disable ();
+  must_yield = ready_has_higher_priority (thread_current ()->priority);
+  intr_set_level (old_level);
+
+  if (!must_yield)
+    return;
+  if (intr_context ())
+    intr_yield_on_return ();
+  else
+    thread_yield ();
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -690,7 +712,7 @@ next_thread_to_run (void)
 
   /* Escolhe a thread de maior prioridade; em empate, list_max
      retorna a primeira, mantendo o round-robin. */
-  e = list_max (&ready_list, cmp_priority, NULL);
+  e = list_max (&ready_list, thread_cmp_priority, NULL);
   list_remove (e);
   return list_entry (e, struct thread, elem);
 }
